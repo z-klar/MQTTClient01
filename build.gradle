@@ -1,0 +1,109 @@
+
+plugins {
+    id 'java'
+	id 'maven-publish'
+}
+
+apply plugin: 'idea'
+
+version '1.0'
+
+sourceCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+test {
+    useJUnitPlatform()
+}
+
+configurations {
+    // configuration that holds jars to include in the jar
+    extraLibs
+}
+
+jar {
+	from { 
+		configurations.extraLibs.collect { 
+			it.isDirectory() ? it : zipTree(it) 
+		} 
+	}
+
+	exclude 'META-INF/*.RSA', 'META-INF/*.SF'
+
+	manifest {
+		attributes(
+			'Main-Class': 'frmMain'
+		)
+	}
+}
+
+dependencies {
+    testCompile group: 'junit', name: 'junit', version: '4.12'
+
+    extraLibs group: 'com.intellij', name: 'forms_rt', version: '7.0.3'
+	extraLibs group: 'org.eclipse.paho', name: 'org.eclipse.paho.client.mqttv3', version: '1.2.1'
+
+    configurations.compile.extendsFrom(configurations.extraLibs)
+
+}
+
+publishing  {
+
+	repositories {
+		maven {
+			url 'http://localhost/repository/maven-releases/'
+			credentials {
+				username 'admin'
+				password 'admin123'
+			}
+		}
+	}
+	publications {
+		mavenJava(MavenPublication) {
+			groupId = 'MODBE'
+			artifactId = 'MOD3-payload-generator-test-client'
+			version = '1.0'
+
+			from components.java
+		}
+	}
+}
+
+build.doLast {
+	println('BUILD - doLast .....')
+	publish.execute()
+}
+
+task Zdenda {
+	println "Zdenda1 - configuration part"
+
+	doFirst {
+		println "Zdenda1 - doFirst"
+	}
+
+	doLast {
+		println "Zdenda1 - doLast:"
+		println project.buildscript.sourceURI
+		publish.execute()
+	}
+}
+
+publish {
+	println 'PUBLISH - config part .....'
+	outputs.upToDateWhen { false }
+}
+
+task Zdenda2 {
+	doLast {
+		println "Current file:"
+		println project.buildscript.sourceFile
+	}
+}
+
+task Zdenda3 {
+	doLast {
+		println "Zdenda 3"
+	}
+}

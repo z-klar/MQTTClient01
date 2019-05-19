@@ -1,0 +1,8 @@
+Info sources:
+=============
+https://www.cloudmqtt.com/docs/java.html
+
+Reference:
+=========
+https://www.eclipse.org/paho/files/javadoc/overview-summary.html
+
