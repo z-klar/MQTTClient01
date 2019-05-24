@@ -9,6 +9,7 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.ResourceBundle;
 import java.util.logging.*;
@@ -28,6 +29,9 @@ public class frmMain {
     private JTextField txPayload;
     private JTextField txSubscribeTopic;
     private JButton btnSubscribe;
+    private JTextField txTestTopic;
+    private JTextField txTestPeriod;
+    private JButton btnStartTest;
 
     private MqttClient mqtt_client;
 
@@ -36,6 +40,12 @@ public class frmMain {
     private Logger logger;
 
     private org.eclipse.paho.client.mqttv3.logging.Logger mqtt_logger;
+
+    private posluchac Speh;
+    private Timer timer;
+
+    private int intCounter, ctLimit;
+    private boolean bJedemTest = false;
 
     /*###################################################################
 
@@ -48,6 +58,7 @@ public class frmMain {
 
         lbMainLog.setModel(dlmMainLog);
 
+        //------------------------  l o g g e r  --------------------------
         logger = Logger.getLogger("Zdenda_MQTT");
         try {
             fh = new FileHandler("c:\\Temp\\Log\\mylog.txt", true);
@@ -74,6 +85,11 @@ public class frmMain {
         };
         fh.setFormatter(sf);
 
+        //----------------------   t i m e r  ------------------------------
+        timer = new Timer(100, new timHandler());
+        timer.start();
+
+        //-------------------------------------------------------------------
         btnConnect.addActionListener(e -> Connect());
         btnDisconnect.addActionListener(e -> Disconnect());
         btnClearMainLog.addActionListener(e -> dlmMainLog.clear());
@@ -81,6 +97,51 @@ public class frmMain {
         btnSubscribe.addActionListener(e -> Subscribe());
 
         logger.log(Level.FINE, "Constructor completed");
+        btnStartTest.addActionListener(e -> SwitchTestState());
+    }
+
+    /*------------------------------------------------------------------
+
+    -------------------------------------------------------------------*/
+    private void SwitchTestState() {
+        String topic = txTestTopic.getText();
+
+        if (bJedemTest) {
+            bJedemTest = false;
+            btnStartTest.setText("Start");
+            btnStartTest.setBackground(new Color(255, 120, 120));
+
+            try {
+                mqtt_client.unsubscribe(topic);
+            } catch (Exception ex) {
+                LogException("Unsubscribe test", ex);
+                JOptionPane.showMessageDialog(null, "Error - see the logger !");
+            }
+
+        } else {
+            bJedemTest = true;
+            btnStartTest.setBackground(new Color(120, 255, 120));
+            btnStartTest.setText("Stop");
+            int per = Integer.parseInt(txTestPeriod.getText());
+            ctLimit = per / 100;
+
+            try {
+                topic = txTestTopic.getText();
+                mqtt_client.subscribe(topic, 0, new mqttEmptyListener());
+                logger.log(Level.FINE, String.format("SUBSCRIBE: [%s]", topic));
+            } catch (Exception ex) {
+                LogException("SUbscribe test", ex);
+
+                bJedemTest = false;
+                btnStartTest.setText("Start");
+                btnStartTest.setBackground(new Color(255, 120, 120));
+
+                JOptionPane.showMessageDialog(null, "Error - see the logger !");
+            }
+
+
+        }
+
     }
 
     /*------------------------------------------------------------------
@@ -122,6 +183,20 @@ public class frmMain {
                     txTopic.getText(), txPayload.getText()));
         } catch (Exception ex) {
             LogException("PUBLISH", ex);
+        }
+    }
+
+    /*------------------------------------------------------------------
+
+    -------------------------------------------------------------------*/
+    private void PublishTest() {
+
+        MqttMessage message = new MqttMessage();
+        message.setPayload(Calendar.getInstance().getTime().toString().getBytes());
+        try {
+            mqtt_client.publish(txTestTopic.getText(), message);
+        } catch (Exception ex) {
+            LogException("PUBLISH test", ex);
         }
     }
 
@@ -298,6 +373,39 @@ public class frmMain {
         btnSubscribe = new JButton();
         btnSubscribe.setText("SUBSCRIBE");
         panel2.add(btnSubscribe, new GridConstraints(4, 3, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final JPanel panel3 = new JPanel();
+        panel3.setLayout(new GridLayoutManager(4, 3, new Insets(0, 0, 0, 0), -1, -1));
+        tabbedPane1.addTab("Tests", panel3);
+        final JLabel label6 = new JLabel();
+        Font label6Font = this.$$$getFont$$$(null, Font.BOLD, 12, label6.getFont());
+        if (label6Font != null) label6.setFont(label6Font);
+        label6.setText("Topic to Publish:");
+        panel3.add(label6, new GridConstraints(0, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        final Spacer spacer2 = new Spacer();
+        panel3.add(spacer2, new GridConstraints(0, 2, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, 1, null, null, null, 0, false));
+        final Spacer spacer3 = new Spacer();
+        panel3.add(spacer3, new GridConstraints(3, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_VERTICAL, 1, GridConstraints.SIZEPOLICY_WANT_GROW, null, null, null, 0, false));
+        txTestTopic = new JTextField();
+        Font txTestTopicFont = this.$$$getFont$$$("Courier New", -1, 14, txTestTopic.getFont());
+        if (txTestTopicFont != null) txTestTopic.setFont(txTestTopicFont);
+        panel3.add(txTestTopic, new GridConstraints(0, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
+        final JLabel label7 = new JLabel();
+        Font label7Font = this.$$$getFont$$$(null, Font.BOLD, 12, label7.getFont());
+        if (label7Font != null) label7.setFont(label7Font);
+        label7.setText("Period [ms]:");
+        panel3.add(label7, new GridConstraints(1, 0, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_NONE, GridConstraints.SIZEPOLICY_FIXED, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
+        txTestPeriod = new JTextField();
+        Font txTestPeriodFont = this.$$$getFont$$$("Courier New", -1, 14, txTestPeriod.getFont());
+        if (txTestPeriodFont != null) txTestPeriod.setFont(txTestPeriodFont);
+        txTestPeriod.setText("1000");
+        panel3.add(txTestPeriod, new GridConstraints(1, 1, 1, 1, GridConstraints.ANCHOR_WEST, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_WANT_GROW, GridConstraints.SIZEPOLICY_FIXED, null, new Dimension(150, -1), null, 0, false));
+        btnStartTest = new JButton();
+        btnStartTest.setBackground(new Color(-1868171));
+        btnStartTest.setEnabled(true);
+        Font btnStartTestFont = this.$$$getFont$$$(null, Font.BOLD, -1, btnStartTest.getFont());
+        if (btnStartTestFont != null) btnStartTest.setFont(btnStartTestFont);
+        btnStartTest.setText("Start");
+        panel3.add(btnStartTest, new GridConstraints(2, 0, 1, 1, GridConstraints.ANCHOR_CENTER, GridConstraints.FILL_HORIZONTAL, GridConstraints.SIZEPOLICY_CAN_SHRINK | GridConstraints.SIZEPOLICY_CAN_GROW, GridConstraints.SIZEPOLICY_FIXED, null, null, null, 0, false));
     }
 
     /**
@@ -326,4 +434,26 @@ public class frmMain {
         return panel1;
     }
 
+
+    /*@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
+
+     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@*/
+    private class timHandler implements ActionListener {
+
+
+        public void actionPerformed(ActionEvent e) {
+            // code to be done during timer event
+            if (bJedemTest) {
+                intCounter++;
+                if (intCounter >= ctLimit) {
+                    intCounter = 0;
+
+                    PublishTest();
+
+                }
+            }
+
+        }
+    }
 }
+
