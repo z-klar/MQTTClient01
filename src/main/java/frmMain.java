@@ -248,10 +248,17 @@ public class frmMain {
         try {
             mqtt_client = new MqttClient(txServerUri.getText(), txClientId.getText());
 
-            mqtt_logger = LoggerFactory.getLogger("log_messages", "Zdenda_MQTT");
 
-            ResourceBundle mybundle = ResourceBundle.getBundle("log_messages");
-            mqtt_logger.initialise(mybundle, "Zdenda_MQTT", "RES01");
+            try {
+                ResourceBundle mybundle = ResourceBundle.getBundle("log_messages");
+                mqtt_logger = LoggerFactory.getLogger("log_messages", "Zdenda_MQTT");
+            } catch (Exception ex) {
+                ResourceBundle mybundle = ResourceBundle.getBundle("log_messages_cs_CZ");
+                mqtt_logger = LoggerFactory.getLogger("log_messages_cs_CZ", "Zdenda_MQTT");
+            }
+
+            //ResourceBundle mybundle = ResourceBundle.getBundle("log_messages");
+            //mqtt_logger.initialise(mybundle, "Zdenda_MQTT", "RES01");
 
 
         } catch (Exception ex) {
