@@ -45,6 +45,8 @@ public class frmMain {
     private Timer timer;
 
     private int intCounter, ctLimit;
+    private int n10seccounter, n10seclimit;
+    int no_frames;
     private boolean bJedemTest = false;
 
     /*###################################################################
@@ -86,7 +88,7 @@ public class frmMain {
         fh.setFormatter(sf);
 
         //----------------------   t i m e r  ------------------------------
-        timer = new Timer(100, new timHandler());
+        timer = new Timer(20, new timHandler());
         timer.start();
 
         //-------------------------------------------------------------------
@@ -123,7 +125,8 @@ public class frmMain {
             btnStartTest.setBackground(new Color(120, 255, 120));
             btnStartTest.setText("Stop");
             int per = Integer.parseInt(txTestPeriod.getText());
-            ctLimit = per / 100;
+            ctLimit = per / 20;
+            n10seclimit = 10000 / 20;
 
             try {
                 topic = txTestTopic.getText();
@@ -138,7 +141,7 @@ public class frmMain {
 
                 JOptionPane.showMessageDialog(null, "Error - see the logger !");
             }
-
+            no_frames = 0;
 
         }
 
@@ -195,6 +198,7 @@ public class frmMain {
         message.setPayload(Calendar.getInstance().getTime().toString().getBytes());
         try {
             mqtt_client.publish(txTestTopic.getText(), message);
+            no_frames++;
         } catch (Exception ex) {
             LogException("PUBLISH test", ex);
         }
@@ -450,6 +454,12 @@ public class frmMain {
 
                     PublishTest();
 
+                }
+                n10seccounter++;
+                if (n10seccounter >= n10seclimit) {
+                    n10seccounter = 0;
+                    dlmMainLog.addElement(String.format("Sent %d frames", no_frames));
+                    no_frames = 0;
                 }
             }
 
